@@ -1,0 +1,61 @@
+<div class="la-theme-switch" dir="ltr" role="group" aria-label="ظاهر صفحه">
+  <button type="button" data-theme="System" aria-label="مطابق دستگاه" title="مطابق دستگاه" aria-pressed="true">
+  </button>
+  <button type="button" data-theme="Light" aria-label="حالت روشن" title="حالت روشن" aria-pressed="false">
+  </button>
+  <button type="button" data-theme="Dark" aria-label="حالت تاریک" title="حالت تاریک" aria-pressed="false">
+  </button>
+</div>
+<script>
+(() => {
+  const controls = document.querySelector(".la-theme-switch");
+  if (!controls || controls.dataset.ready) return;
+  controls.dataset.ready = "true";
+
+  const mark = (theme) => {
+    for (const button of controls.querySelectorAll("button")) {
+      button.setAttribute("aria-pressed", String(button.dataset.theme === theme));
+    }
+  };
+  // Streamlit 1.66.1 stores its selection per app URL and owns the palette.
+  const savedKey = "stActiveTheme-" + window.location.pathname + "-v2";
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(savedKey));
+    if (["System", "Light", "Dark"].includes(saved)) mark(saved);
+  } catch {
+    // The default still follows the device when browser storage is unavailable.
+  }
+
+  controls.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-theme]");
+    const menu = document.querySelector('[data-testid="stMainMenuButton"]');
+    if (!button || !menu || controls.dataset.switching) return;
+
+    controls.dataset.switching = "true";
+    const optionSelector = '[data-testid="stMainMenuItem-theme-' + button.dataset.theme + '"]';
+    const selectTheme = () => {
+      const option = document.querySelector(optionSelector);
+      if (!option) return false;
+      option.click();
+      mark(button.dataset.theme);
+      button.focus({ preventScroll: true });
+      return true;
+    };
+    const observer = new MutationObserver(() => {
+      if (selectTheme()) finish();
+    });
+    const timeout = window.setTimeout(() => {
+      if (menu.getAttribute("aria-expanded") === "true") menu.click();
+      finish();
+    }, 1000);
+    const finish = () => {
+      observer.disconnect();
+      window.clearTimeout(timeout);
+      delete controls.dataset.switching;
+    };
+    observer.observe(document.body, { childList: true, subtree: true });
+    if (menu.getAttribute("aria-expanded") !== "true") menu.click();
+    if (selectTheme()) finish();
+  });
+})();
+</script>
